@@ -3,13 +3,12 @@ import os
 import time
 import argparse
 from yt_dlp import YoutubeDL
-from clip_media import clip_mp3
-from moviepy.editor import AudioFileClip
 
 def get_absolute_path(download_path, filename):
     return os.path.abspath(os.path.join(download_path, filename))
 
 def convert_webm_audio_to_mp3(input_file_path, output_file_path):
+    from moviepy.audio.io.AudioFileClip import AudioFileClip
     # Load the WebM file (treat it as an audio file)
     audio = AudioFileClip(input_file_path)
 
@@ -19,6 +18,13 @@ def convert_webm_audio_to_mp3(input_file_path, output_file_path):
     # Close the audio object
     audio.close()
 
+def _get_ffmpeg_path():
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return None
+
 def download_video(url, download_path, clip_media=None, convert_to_mp3=False, cookies_path=None):
     try:
         ydl_opts = {
@@ -26,6 +32,9 @@ def download_video(url, download_path, clip_media=None, convert_to_mp3=False, co
             'format': 'bestvideo[ext=mp4]+bestaudio/best[ext=mp4]',
             'cookiefile': cookies_path,
         }
+        ffmpeg_path = _get_ffmpeg_path()
+        if ffmpeg_path:
+            ydl_opts['ffmpeg_location'] = ffmpeg_path
         if convert_to_mp3:
             ydl_opts['format'] = 'bestaudio[ext=webm]/bestaudio'
         with YoutubeDL(ydl_opts) as ydl:
@@ -42,8 +51,9 @@ def download_video(url, download_path, clip_media=None, convert_to_mp3=False, co
         return
         
     if clip_media:
+        from clip_media import clip_mp4
         temp_output_path = get_absolute_path(download_path, "temp_" + os.path.basename(video_path))
-        clip_mp3(video_path, temp_output_path, clip_media[0], clip_media[1])
+        clip_mp4(video_path, temp_output_path, clip_media[0], clip_media[1])
         os.remove(video_path)
         os.rename(temp_output_path, video_path)
         
@@ -55,6 +65,9 @@ def download_playlist(url, download_path=None, limit=None, convert_to_mp3=False,
             'format': 'bestvideo[ext=mp4]+bestaudio/best[ext=mp4]',
             'cookiefile': cookies_path,
         }
+        ffmpeg_path = _get_ffmpeg_path()
+        if ffmpeg_path:
+            ydl_opts['ffmpeg_location'] = ffmpeg_path
         if convert_to_mp3:
             ydl_opts['format'] = 'bestaudio[ext=webm]/bestaudio'
 
